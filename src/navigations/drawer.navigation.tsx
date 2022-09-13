@@ -12,12 +12,12 @@ const Drawer = createDrawerNavigator();
 export default function HomeRoute() {
     return (
         <Drawer.Navigator
-                screenOption={{
+                screenOptions={{
                     headerShown: true,
-                    headerStyle: { backgroundColor: colors.primary},
+                    headerStyle: { backgroundColor: 'white'},
                     headerTintColor: colors.primary,
                     drawerStyle: {
-                        backgroundColor: colors.primary,
+                        backgroundColor: colors.white,
                     },
                     drawerInactiveTintColor: colors.primary,
                     drawerActiveTintColor: colors.primary,
@@ -33,16 +33,7 @@ export default function HomeRoute() {
                     )
                 }}
             />
-            <Drawer.Screen
-                name="Chat"
-                component={ChatScreen}
-                options={{
-                    drawerLabel: "Chat",
-                    drawerIcon: () => (
-                        <Ionicons name="chatbubbles" size={24} color={colors.primary} />
-                    ),
-                }}
-            />
+
             <Drawer.Screen
                 name="Mapa"
                 component={MapScreen}
@@ -59,7 +50,7 @@ export default function HomeRoute() {
                 options={{
                     drawerLabel: "Sair",
                     drawerIcon: () => (
-                        <Ionicons name="exit" size={24} color={colors.primary} />
+                        <Ionicons name="exit" size={24} color='red' />
                     ),
                 }}
             />

@@ -6,7 +6,7 @@ import {format} from "date-fns";
 
 export default function Card ({ data }: IMensagemState) {
     return (
-    <View style = {styles.cardOrange}>
+    <View style = {styles.card}>
         <Text>
             {data.user.name} -{" "}
             {format(new Date(data.created_at), "dd/MM/yyyy HH:mm:ss")}
