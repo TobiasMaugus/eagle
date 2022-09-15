@@ -1,117 +1,163 @@
-import React, { useState, useEffect } from "react";
-import MapView, { Region, Marker } from "react-native-maps";
-import * as Location from "expo-location";
-import styles from "./styles";
-import { Text, View, SafeAreaView } from "react-native";
-import {GooglePlacesAutocomplete} from "react-native-google-places-autocomplete";
+import React from "react";
+import {
+  GoogleMap,
+  Marker,
+  LoadScript,
+  StandaloneSearchBox,
+  DirectionsService,
+  DirectionsRenderer,
+} from "@react-google-maps/api";
+import "./MapPage.css";
 
-export default function App() {
-    const [location, setLocation] = useState<null | Location.LocationObject>(null);
-    const [region, setRegion] = useState<Region>();
-    const [marker, setMarker] = useState<Region[]>();
-    const [errorMsg, setErrorMsg] = useState<null | string>(null);
+export interface MapPageProps {}
 
-    async function handleBusca(data: string){
-        try {
-            const response = await Location.geocodeAsync(data);
-            if (response.length > 0){
-                const { latitude, longitude, altitude, accuracy} = response[0];
-                setLocation({
-                    coords: {
-                        ...response[0],
-                        altitude: altitude || 0,
-                        accuracy: accuracy || 0,
-                        altitudeAccuracy: null,
-                        heading: null,
-                        speed: null
-                    },
-                    timestamp: Date.now(),
-                });
-                setRegion({
-                    latitude,
-                    longitude,
-                    latitudeDelta: 0.006,
-                    longitudeDelta: 0.006,
-                });
-                setMarker([
-                    {
-                        latitude,
-                        longitude,
-                        latitudeDelta: 0.004,
-                        longitudeDelta: 0.004,
-                    },
-                ]);
-            }
-        } catch (error) {
-            console.log(error);
-        }
-    }
+const MapPage = () => {
+  const [map, setMap] = React.useState<google.maps.Map>();
+  const [searchBoxA, setSearchBoxA] =
+    React.useState<google.maps.places.SearchBox>();
+  const [searchBoxB, setSearchBoxB] =
+    React.useState<google.maps.places.SearchBox>();
+  const [pointA, setPointA] = React.useState<google.maps.LatLngLiteral>();
+  const [pointB, setPointB] = React.useState<google.maps.LatLngLiteral>();
 
-    useEffect(() => {
-        const handleLocation = async () => {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== "granted") {
-                setErrorMsg("Permission to access location was denied");
-                return;
-            }
-            Location.setGoogleApiKey("AIzaSyASkiDH2uoIox33gZh88LUNFZf6KOz4th0")
+  const [origin, setOrigin] = React.useState<google.maps.LatLngLiteral | null>(
+    null
+  );
+  const [destination, setDestination] =
+    React.useState<google.maps.LatLngLiteral | null>(null);
 
+  const [response, setResponse] =
+    React.useState<google.maps.DistanceMatrixResponse | null>(null);
 
-        let location = await Location.getCurrentPositionAsync();
-        if (location) {
-            setLocation(location);
-            setRegion({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.006,
-                longitudeDelta: 0.006,
-            });
+  const position = {
+    lat: -27.590824,
+    lng: -48.551262,
+  };
 
-            setMarker([{
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.004,
-                longitudeDelta: 0.004,
-            },]);
-        }
+  const onMapLoad = (map: google.maps.Map) => {
+    setMap(map);
+  };
+
+  const onLoadA = (ref: google.maps.places.SearchBox) => {
+    setSearchBoxA(ref);
+  };
+
+  const onLoadB = (ref: google.maps.places.SearchBox) => {
+    setSearchBoxB(ref);
+  };
+
+  const onPlacesChangedA = () => {
+    const places = searchBoxA!.getPlaces();
+    console.log(places);
+    const place = places![0];
+    const location = {
+      lat: place?.geometry?.location?.lat() || 0,
+      lng: place?.geometry?.location?.lng() || 0,
     };
-    handleLocation();
-    }, []);
+    setPointA(location);
+    setOrigin(null);
+    setDestination(null);
+    setResponse(null);
+    map?.panTo(location);
+  };
 
-    let text = "Waiting..";
-    if (errorMsg) {
-        text = errorMsg;
-    } else if (location) {
-        text = JSON.stringify(location);
+  const onPlacesChangedB = () => {
+    const places = searchBoxB!.getPlaces();
+    console.log(places);
+    const place = places![0];
+    const location = {
+      lat: place?.geometry?.location?.lat() || 0,
+      lng: place?.geometry?.location?.lng() || 0,
+    };
+    setPointB(location);
+    setOrigin(null);
+    setDestination(null);
+    setResponse(null);
+    map?.panTo(location);
+  };
+
+  const traceRoute = () => {
+    if (pointA && pointB) {
+      setOrigin(pointA);
+      setDestination(pointB);
     }
+  };
 
-    return(
-        <SafeAreaView style={styles.container}> 
-        <View style={styles.posicao}>
-            <GooglePlacesAutocomplete
-                placeholder="Pesquisar endereço"
-                minLength={7}
-                query={{
-                    key: "AIzaSyASkiDH2uoIox33gZh88LUNFZf6KOz4th0",
-                    language: "pt-BR",
-                }}
-                onPress={(data) => {
-                    handleBusca(data.description);
-                }}
-                onFail={(error) => console.error(error)}
-                styles={styles.google}
+  const directionsServiceOptions =
+    // @ts-ignore
+    React.useMemo<google.maps.DirectionsRequest>(() => {
+      return {
+        origin,
+        destination,
+        travelMode: "DRIVING",
+      };
+    }, [origin, destination]);
+
+  const directionsCallback = React.useCallback((res) => {
+    if (res !== null && res.status === "OK") {
+      setResponse(res);
+    } else {
+      console.log(res);
+    }
+  }, []);
+
+  const directionsRendererOptions = React.useMemo<any>(() => {
+    return {
+      directions: response,
+    };
+  }, [response]);
+
+  return (
+    <div className="map">
+      <LoadScript
+        googleMapsApiKey="AIzaSyASkiDH2uoIox33gZh88LUNFZf6KOz4th0"
+        libraries={["places"]}
+      >
+        <GoogleMap
+          onLoad={onMapLoad}
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+          center={position}
+          zoom={15}
+        >
+          <div className="address">
+            <StandaloneSearchBox
+              onLoad={onLoadA}
+              onPlacesChanged={onPlacesChangedA}
+            >
+              <input
+                className="addressField"
+                placeholder="Digite o endereço inicial"
+              />
+            </StandaloneSearchBox>
+            <StandaloneSearchBox
+              onLoad={onLoadB}
+              onPlacesChanged={onPlacesChangedB}
+            >
+              <input
+                className="addressField"
+                placeholder="Digite o endereço final"
+              />
+            </StandaloneSearchBox>
+            <button onClick={traceRoute}>Traçar rota</button>
+          </div>
+
+          {!response && pointA && <Marker position={pointA} />}
+          {!response && pointB && <Marker position={pointB} />}
+
+          {origin && destination && (
+            <DirectionsService
+              options={directionsServiceOptions}
+              callback={directionsCallback}
             />
-        </View>
-        {!region && <Text style={styles.paragraph}> {text} </Text>}
-        {region && (
-            <MapView style={styles.map} region={region}>
-                {marker && 
-                    marker.map((item) => (
-                        <Marker key={item.latitude} coordinate={item}/>
-                    ))
-                }
-            </MapView>
-        )}
-        </SafeAreaView>
-    );
-}
+          )}
+
+          {response && directionsRendererOptions && (
+            <DirectionsRenderer options={directionsRendererOptions} />
+          )}
+        </GoogleMap>
+      </LoadScript>
+    </div>
+  );
+};
+
+export default MapPage;
